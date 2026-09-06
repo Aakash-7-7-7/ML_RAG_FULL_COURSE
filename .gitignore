@@ -2,3 +2,6 @@
 /LANGGRAPH/chroma_db
 
 /LANGGRAPH/ADAPTIVE_RAG/chroma1_db
+
+/LANGGRAPH/ADAPTIVE_RAG/code_skeleton_output
+/LANGGRAPH/ADAPTIVE_RAG/skeletons

@@ -1,0 +1,52 @@
+ai-data-agent/
+│
+├── frontend/                       # React UI
+│   │
+│   ├── src/
+│   │   │
+│   │   ├── components/
+│   │   │   ├── Chat.jsx
+│   │   │   ├── FileUpload.jsx
+│   │   │   ├── DataPreview.jsx
+│   │   │   └── Chart.jsx
+│   │   │
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   │
+│   └── package.json
+│
+│
+├── electron/                       # Desktop app
+│   │
+│   ├── main.js
+│   └── preload.js
+│
+│
+├── backend/                        # Python AI backend
+│   │
+│   ├── main.py                     # FastAPI entry point
+│   │
+│   ├── agent.py                    # LangGraph agent
+│   │
+│   ├── state.py                    # LangGraph state
+│   │
+│   ├── tools.py                    # Pandas / analysis tools
+│   │
+│   ├── csv_handler.py              # Load and manage CSV
+│   │
+│   ├── profiler.py                 # Get columns, types, stats
+│   │
+│   ├── llm.py                      # Connect to LM Studio
+│   │
+│   └── requirements.txt
+│
+│
+├── data/                           # Uploaded CSV files
+│
+├── charts/                         # Generated charts
+│
+├── database/                       # SQLite database later
+│
+├── README.md
+│
+└── package.json
