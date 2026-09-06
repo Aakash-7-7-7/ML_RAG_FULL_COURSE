@@ -22,6 +22,7 @@ A hands-on, end-to-end curriculum for mastering **Retrieval-Augmented Generation
 ```
 ML_RAG_FULL_COURSE/
 ├── AGENTS/                              # Standalone agent design notebooks/resources
+├── AI-PROJECTS/                         # AI based Projects
 ├── data/                                # Raw datasets used across notebooks
 ├── docs/                                # Reference documentation & notes
 ├── images/                              # Test Images
