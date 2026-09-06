@@ -16,7 +16,7 @@ result = app.invoke(
     {
         "messages": [
             HumanMessage(
-                content="show histogram of salary"
+                content="show line plot of age and salary"
             )
         ],
         "dataset_context": {}

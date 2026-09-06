@@ -185,10 +185,87 @@ def histogram(column: str) -> dict:
         "total_values": len(data)
     }
 
+
+@tool
+def line_plot(y_column: str, x_column: str | None = None) -> dict:
+    """
+    Generate a line plot.
+
+    Use a univariate line plot when only y_column is provided.
+    The dataset row index will be used as the x-axis.
+
+    Use a bivariate line plot when both x_column and y_column
+    are provided.
+
+    The x_column and y_column should be different for a
+    bivariate line plot.
+    """
+
+    
+    df = get_current_dataframe()
+    if df is None or df.empty:
+        return {"error": "No active dataset found. Please load a CSV first."}
+    
+    available_columns = list(df.columns)
+
+    def find_best_match(col_name: str | None, options: list) -> str | None:
+        if col_name is None:
+            return None
+        for opt in options:
+            if col_name.strip().lower() == opt.strip().lower():
+                return opt 
+        matches = get_close_matches(col_name, options, n=1, cutoff=0.6)
+        return matches[0] if matches else None
+
+    matched_y = find_best_match(y_column, available_columns)
+    matched_x = find_best_match(x_column, available_columns)
+
+    # Validate y_column (always required)
+    if not matched_y:
+        return {
+            "error": f"Could not find a match for y-column: '{y_column}'. Available columns are: {available_columns}"
+        }
+
+    # Validate x_column only if explicitly passed
+    if x_column is not None and not matched_x:
+        return {
+            "error": f"Could not find a match for x-column: '{x_column}'. Available columns are: {available_columns}"
+        }
+
+    plt.figure(figsize=(8, 6))
+
+    if matched_x is None:
+        plt.plot(df[matched_y], marker="o", linestyle="dotted")
+        plt.xlabel("Row Index")
+        plt.ylabel(matched_y)
+        plt.title(f"Line Plot of {matched_y}")
+    else:
+        plt.plot(df[matched_x], df[matched_y], marker="o", linestyle="dotted")
+        plt.xlabel(matched_x)
+        plt.ylabel(matched_y)
+        plt.title(f"{matched_y} vs {matched_x}")
+
+    plt.grid(True)
+    plt.show()
+    plt.close()
+
+    return {
+        "status": "success",
+        "chart_type": "line",
+        "message": "Line plot generated successfully.",
+        "x_column_used": matched_x if matched_x else "Row Index",
+        "y_column_used": matched_y
+    }
+
+
+
+
+
 tools = [
     null_values,
     summarize,
     get_dataset_overview,
     scatter_plot,
-    histogram
+    histogram,
+    line_plot
 ]
