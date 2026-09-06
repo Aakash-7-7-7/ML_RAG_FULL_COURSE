@@ -101,7 +101,7 @@ def scatter_plot(x_column: str, y_column: str) -> dict:
     plt.ylabel(matched_y)
     plt.grid(True)
     plt.show()
-    plt.close("all")
+    plt.close()
 
     return {
         "status": "success",
@@ -110,10 +110,85 @@ def scatter_plot(x_column: str, y_column: str) -> dict:
         "y_column_used": matched_y,
     }
 
+@tool
+def histogram(column: str) -> dict:
+    """Generate and display a histogram for a numerical column.
+    Handles minor typos in column names.
+    """
+
+    df = get_current_dataframe()
+
+    if df is None or df.empty:
+        return {
+            "error": "No active dataset found. Please load a CSV first."
+        }
+
+    available_columns = list(df.columns)
+
+    def find_best_match(col_name: str,options: list) -> str | None:
+
+        # First try exact case-insensitive match
+        for opt in options:
+            if col_name.strip().lower() == opt.strip().lower():
+                return opt
+
+        # Then try fuzzy matching
+        matches = get_close_matches(col_name,options,n=1,cutoff=0.6)
+
+        return matches[0] if matches else None
+
+
+    matched_column = find_best_match(column,available_columns)
+
+
+    if not matched_column:
+        return {
+            "error": (
+                f"Could not find a match for '{column}'. "
+                f"Available columns are: {available_columns}"
+            )
+        }
+
+
+    # Check if column is numeric
+    if not df[matched_column].dtype.kind in "biufc":
+        return {
+            "error": (
+                f"'{matched_column}' is not a numerical column. "
+                "A histogram requires numerical data."
+            )
+        }
+
+
+    # Remove null values
+    data = df[matched_column].dropna()
+
+
+    plt.figure(figsize=(8, 6))
+    plt.hist(data,bins=5,edgecolor="black")
+    plt.title(f"Distribution of {matched_column}")
+    plt.xlabel(matched_column)
+    plt.ylabel("Frequency")
+    plt.grid(True)
+    plt.show()
+    plt.close()
+
+
+    return {
+        "status": "success",
+        "chart_type": "histogram",
+        "message": (
+            f"Successfully generated a histogram for "
+            f"'{matched_column}'."
+        ),
+        "column_used": matched_column,
+        "total_values": len(data)
+    }
 
 tools = [
     null_values,
     summarize,
     get_dataset_overview,
-    scatter_plot
+    scatter_plot,
+    histogram
 ]

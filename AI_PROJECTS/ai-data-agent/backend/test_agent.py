@@ -5,7 +5,7 @@ from agent import app
 
 
 # Load CSV
-df = load_csv_to_dataframe("cars.csv")
+df = load_csv_to_dataframe("Salary.csv")
 
 # Store it as the current dataset
 set_current_dataframe(df)
@@ -16,7 +16,7 @@ result = app.invoke(
     {
         "messages": [
             HumanMessage(
-                content="show me scatterplot between selling price and brand"
+                content="show histogram of salary"
             )
         ],
         "dataset_context": {}
