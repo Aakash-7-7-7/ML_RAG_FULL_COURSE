@@ -1,3 +1,4 @@
 .env
 \__pycache__
 AI_PROJECTS/ai-data-agent/backend/Salary.csv
+AI_PROJECTS/ai-data-agent/backend/database/agent_memory.db

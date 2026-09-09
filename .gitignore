@@ -6,3 +6,6 @@
 /LANGGRAPH/ADAPTIVE_RAG/code_skeleton_output
 /LANGGRAPH/ADAPTIVE_RAG/skeletons
 AI_PROJECTS/ai-data-agent/backend/Salary.csv
+AI_PROJECTS/ai-data-agent/backend/database/agent_memory.db
+AI_PROJECTS/ai-data-agent/data
+AI_PROJECTS/ai-data-agent/charts
