@@ -9,3 +9,6 @@ AI_PROJECTS/ai-data-agent/backend/Salary.csv
 AI_PROJECTS/ai-data-agent/backend/database/agent_memory.db
 AI_PROJECTS/ai-data-agent/data
 AI_PROJECTS/ai-data-agent/charts
+AI_PROJECTS/ai-data-agent/backend/database/agent_memory.db-shm
+AI_PROJECTS/ai-data-agent/backend/database/agent_memory.db-wal
+SQL_ALCHEMY/*.db

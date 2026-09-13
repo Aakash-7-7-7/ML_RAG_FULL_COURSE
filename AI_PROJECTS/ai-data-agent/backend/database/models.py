@@ -19,7 +19,7 @@ from sqlalchemy import (
     Text,
     DateTime,
     ForeignKey,
-    Enum,
+    Enum, 
     UniqueConstraint,
     Index,
 )
