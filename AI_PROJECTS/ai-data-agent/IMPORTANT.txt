@@ -1,0 +1,3 @@
+To run the project initialize backend first :: \backend>uvicorn api:app --reload --port 8000
+
+Then Run the fronend Folder :: \frontend>npm run dev

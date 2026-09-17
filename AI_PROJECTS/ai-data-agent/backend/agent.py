@@ -8,15 +8,23 @@ from tools import tools
 llm=connect_llm()
 llm_with_tools=llm.bind_tools(tools)
 
-def agent(state:State):
-    response=llm_with_tools.invoke(
+def agent(state: State):
+    response = llm_with_tools.invoke(
         state["messages"]
     )
 
-    return{
-        "messages":[response]
-    }
+    print("\n========== AGENT RESPONSE ==========")
+    print("CONTENT:")
+    print(response.content)
 
+    print("\nTOOL CALLS:")
+    print(response.tool_calls)
+
+    print("====================================\n")
+
+    return {
+        "messages": [response]
+    }
 
 graph=StateGraph(State)
 

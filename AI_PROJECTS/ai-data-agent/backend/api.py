@@ -32,6 +32,8 @@ from pathlib import Path
 from typing import Any
 import re
 
+import pandas as pd
+
 from fastapi import FastAPI, HTTPException, UploadFile, File, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -151,174 +153,100 @@ def _extract_last_ai_text(messages: list) -> str:
 
 def _extract_chart_info(messages: list) -> dict[str, str] | None:
     """
-    Extract chart information from the LangGraph result.
+    Extract chart information only from an actual ToolMessage.
 
-    Supports:
-    1. ToolMessage containing a Python dict/string dict
-    2. AIMessage containing chart_id
-    3. AIMessage containing a chart PNG file path
+    We intentionally do NOT extract chart paths or chart IDs from
+    AIMessage content because the LLM can hallucinate them.
     """
-
-    # -------------------------------------------------
-    # FIRST: Look through ToolMessages
-    # -------------------------------------------------
 
     for message in reversed(messages):
 
+        # Only trust actual tool execution results
         if not isinstance(message, ToolMessage):
             continue
 
         content = message.content
 
+        # Tool returned a Python dict
         if isinstance(content, dict):
-
             parsed = content
 
+        # Tool returned a string representation of a dict
         elif isinstance(content, str):
-
             try:
-
                 parsed = ast.literal_eval(content)
-
             except (ValueError, SyntaxError):
-
                 continue
 
         else:
-
             continue
 
-
-        if (
-            isinstance(parsed, dict)
-            and parsed.get("chart_id")
-        ):
+        # Check for a real chart_id returned by the tool
+        if isinstance(parsed, dict) and parsed.get("chart_id"):
 
             return {
-
-                "chart_id":
-                    str(parsed["chart_id"]),
-
-                "file_path":
-                    str(
-                        parsed.get(
-                            "file_path",
-                            ""
-                        )
-                    )
+                "chart_id": str(parsed["chart_id"]),
+                "file_path": str(parsed.get("file_path", "")),
+                "chart_type": str(parsed.get("chart_type", "")),
             }
-
-
-    # -------------------------------------------------
-    # SECOND: Look for chart_id or PNG path
-    # inside any AI message
-    # -------------------------------------------------
-
-    for message in reversed(messages):
-
-        if not isinstance(
-            message,
-            AIMessage
-        ):
-            continue
-
-
-        content = str(
-            message.content
-        )
-
-
-        # ---------------------------------------------
-        # Look for:
-        #
-        # "chart_id": "abc-123"
-        # or
-        # 'chart_id': 'abc-123'
-        # ---------------------------------------------
-
-        chart_id_match = re.search(
-
-            r"""
-            chart_id
-            ["']?\s*[:=]\s*
-            ["']?
-            ([A-Za-z0-9_-]+)
-            """,
-
-            content,
-
-            re.IGNORECASE |
-            re.VERBOSE
-
-        )
-
-
-        if chart_id_match:
-
-            chart_id = (
-                chart_id_match
-                .group(1)
-            )
-
-
-            return {
-
-                "chart_id":
-                    chart_id,
-
-                "file_path":
-                    ""
-
-            }
-
-
-        # ---------------------------------------------
-        # Look for:
-        #
-        # something.png
-        #
-        # Example:
-        #
-        # C:\...\charts\
-        # 6435f311-7290-439c-88e6-17760e381653.png
-        # ---------------------------------------------
-
-        png_match = re.search(
-
-            r"""
-            ([A-Za-z0-9_-]+)
-            \.png
-            """,
-
-            content,
-
-            re.IGNORECASE |
-            re.VERBOSE
-
-        )
-
-
-        if png_match:
-
-            chart_id = (
-                png_match
-                .group(1)
-            )
-
-
-            return {
-
-                "chart_id":
-                    chart_id,
-
-                "file_path":
-                    ""
-
-            }
-
 
     return None
 
+
+def _extract_existing_chart_from_text(text: str) -> dict[str, str] | None:
+    """
+    Check whether the LLM mentioned a chart PNG that actually
+    exists in the charts folder.
+
+    The LLM's path is never trusted blindly.
+    We only use it if the referenced file actually exists.
+    """
+
+    if not text:
+        return None
+
+    match = re.search(
+        r'!\[[^\]]*\]\((.*?)\)',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    if not match:
+        return None
+
+    claimed_path = match.group(1).strip().strip('"').strip("'")
+
+    if not claimed_path.lower().endswith(".png"):
+        return None
+
+    claimed_file = Path(claimed_path)
+
+    # Check the exact path first
+    if claimed_file.is_file():
+        return {
+            "chart_id": claimed_file.stem,
+            "file_path": str(claimed_file),
+            "chart_type": "",
+        }
+
+    # If the LLM gave a Windows path that doesn't resolve in
+    # the current environment, check only the filename inside
+    # our controlled charts directory.
+    filename = claimed_file.name
+
+    if not filename:
+        return None
+
+    local_file = CHARTS_DIR / filename
+
+    if local_file.is_file():
+        return {
+            "chart_id": local_file.stem,
+            "file_path": str(local_file),
+            "chart_type": "",
+        }
+
+    return None
 
 def _encode_chart_as_data_uri(chart_id: str) -> str | None:
     """
@@ -443,42 +371,120 @@ def get_memory(conversation_id: str) -> dict[str, str]:
 
 @app.post("/api/chat", response_model=ChatResponse, tags=["chat"])
 def chat(request: ChatRequest) -> ChatResponse:
-    conversation_id = get_or_create_conversation(request.conversation_id)
 
-    dataset_context = {"dataset_loaded": get_current_dataframe() is not None}
-    context = build_context(conversation_id, dataset_context=dataset_context)
+    conversation_id = get_or_create_conversation(
+        request.conversation_id
+    )
 
-    # NOTE: adjust these two state keys if your actual state.py's State
-    # TypedDict uses different field names than test_agent.py implies.
+    dataset_context = {
+        "dataset_loaded": get_current_dataframe() is not None
+    }
+
+    context = build_context(
+        conversation_id,
+        dataset_context=dataset_context
+    )
+
     graph_input = {
-        "messages": context["messages"] + [HumanMessage(content=request.message)],
+        "messages": context["messages"]
+        + [HumanMessage(content=request.message)],
+
         "dataset_context": context["dataset_state"],
     }
 
     try:
         result = agent_graph.invoke(graph_input)
+
     except Exception:
-        logger.exception("Agent invocation failed for conversation %s", conversation_id)
-        raise HTTPException(status_code=502, detail="The agent failed to produce a response.")
+        logger.exception(
+            "Agent invocation failed for conversation %s",
+            conversation_id
+        )
+
+        raise HTTPException(
+            status_code=502,
+            detail="The agent failed to produce a response."
+        )
 
     result_messages = result["messages"]
-    assistant_text = _extract_last_ai_text(result_messages)
+
+    # -----------------------------------------
+    # Extract assistant response
+    # -----------------------------------------
+
+    assistant_text = _extract_last_ai_text(
+        result_messages
+    )
+
+    # -----------------------------------------
+    # Extract REAL chart information
+    # -----------------------------------------
+
     chart_info = _extract_chart_info(result_messages)
 
-    chart_id = chart_info["chart_id"] if chart_info else None
-    chart_base64 = _encode_chart_as_data_uri(chart_id) if chart_id else None
+    # If no real ToolMessage was produced, check whether
+    # the LLM mentioned a chart whose file actually exists.
+    if chart_info is None:
+        chart_info = _extract_existing_chart_from_text(
+            assistant_text
+        )
+
+    chart_id = (
+        chart_info["chart_id"]
+        if chart_info
+        else None
+    )
+
+    chart_base64 = (
+        _encode_chart_as_data_uri(chart_id)
+        if chart_id
+        else None
+    )
+
+    # -----------------------------------------
+    # Save conversation + chart metadata
+    # -----------------------------------------
 
     try:
-        promoted = update_memory(conversation_id, request.message, assistant_text)
+
+        assistant_metadata = None
+
+        if chart_info:
+            assistant_metadata = {
+                "chart_id": chart_info["chart_id"],
+                "chart_type": chart_info.get("chart_type"),
+                "file_path": chart_info.get("file_path"),
+            }
+
+        promoted = update_memory(
+            conversation_id,
+            request.message,
+            assistant_text,
+            assistant_metadata=assistant_metadata,
+        )
+
     except Exception:
-        logger.exception("Failed to persist turn for conversation %s", conversation_id)
+
+        logger.exception(
+            "Failed to persist turn for conversation %s",
+            conversation_id
+        )
+
         promoted = {}
+
+    # -----------------------------------------
+    # Return response to React
+    # -----------------------------------------
 
     return ChatResponse(
         conversation_id=conversation_id,
         response=assistant_text,
         chart_id=chart_id,
-        chart_url=f"/api/charts/{chart_id}" if chart_id else None,
+        chart_url=(
+            f"/api/charts/{chart_id}"
+            if chart_id
+            else None
+        ),
         chart_base64=chart_base64,
         promoted_memory=promoted,
     )

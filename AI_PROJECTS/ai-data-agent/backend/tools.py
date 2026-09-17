@@ -207,7 +207,30 @@ def get_dataset_overview():
 
 @tool
 def scatter_plot(x_column: str, y_column: str) -> dict:
-    """Generates a scatter plot between two columns. Handles minor typos in column names and excludes rows with missing values in either column."""
+    """
+    Generate a scatter plot between two columns.
+
+    Handles minor typos in column names and excludes rows with
+    missing values in either column.
+
+    IMPORTANT:
+    If the user requests a scatter plot/chart, ALWAYS call this tool
+    instead of replying with text only.
+    Dont say anything like saved or view using the file path.
+
+    The following requests all mean the user wants this tool called:
+    - give me the scatter plot
+    - show me the scatter plot
+    - make the scatter plot
+    - create a scatter plot
+    - generate a scatter plot
+    - give me a scatter chart
+    - show me a scatter chart
+    - make a scatter chart
+    - create a scatter chart
+    - generate a scatter chart
+    - plot these columns as a scatter plot
+    """
     df = get_current_dataframe()
     if df is None or df.empty:
         return {"error": "No active dataset found. Please load a CSV first."}
@@ -245,22 +268,66 @@ def scatter_plot(x_column: str, y_column: str) -> dict:
     if dropped_rows:
         message += f" Excluded {dropped_rows} row(s) with missing values in these columns."
 
+
+    stats = {
+        "x_count": int(plot_df[matched_x].count()),
+        "y_count": int(plot_df[matched_y].count()),
+
+        "x_min": float(plot_df[matched_x].min()),
+        "x_max": float(plot_df[matched_x].max()),
+        "x_mean": float(plot_df[matched_x].mean()),
+        "x_median": float(plot_df[matched_x].median()),
+
+        "y_min": float(plot_df[matched_y].min()),
+        "y_max": float(plot_df[matched_y].max()),
+        "y_mean": float(plot_df[matched_y].mean()),
+        "y_median": float(plot_df[matched_y].median()),
+
+        "correlation": (
+            float(plot_df[matched_x].corr(plot_df[matched_y]))
+            if len(plot_df) > 1
+            else None
+        )
+        }
+
     return {
-    "status": "success",
-    "chart_id": chart_id,
-    "file_path": file_path,
-    "chart_type": "scatter_plot",
-    "message": message,
-    "x_column_used": matched_x,
-    "y_column_used": matched_y,
-    "rows_used": len(plot_df),
-    "rows_excluded_missing": dropped_rows,
+        "status": "success",
+        "chart_id": chart_id,
+        "file_path": file_path,
+        "chart_type": "scatter_plot",
+        "message": message,
+        "x_column_used": matched_x,
+        "y_column_used": matched_y,
+        "rows_used": len(plot_df),
+        "rows_excluded_missing": dropped_rows,
+        "statistics": stats,
     }
 
 
 @tool
 def histogram(column: str) -> dict:
-    """Generate and display a histogram for a numerical column. Handles minor typos in column names and excludes missing values."""
+    """
+    Generate a histogram for a numerical column.
+
+    Handles minor typos in column names and excludes rows with
+    missing values.
+
+    IMPORTANT:
+    If the user requests a histogram, ALWAYS call this tool
+    instead of replying with text only.
+    Dont say anything like saved or view using the file path.
+
+    The following requests all mean the user wants this tool called:
+    - give me the histogram
+    - show me the histogram
+    - make the histogram
+    - create a histogram
+    - generate a histogram
+    - give me a histogram of the column
+    - show me the distribution
+    - plot the distribution
+    - visualize the distribution
+    """
     df = get_current_dataframe()
     if df is None or df.empty:
         return {"error": "No active dataset found. Please load a CSV first."}
@@ -292,15 +359,34 @@ def histogram(column: str) -> dict:
     if dropped_rows:
         message += f" Excluded {dropped_rows} row(s) with missing values in this column."
 
+
+    stats = {
+    "count": int(data.count()),
+    "missing": int(df[matched_column].isna().sum()),
+    "min": float(data.min()),
+    "max": float(data.max()),
+    "mean": float(data.mean()),
+    "median": float(data.median()),
+    "std": float(data.std()) if len(data) > 1 else 0.0,
+    }
+
+
     return {
     "status": "success",
     "chart_id": chart_id,
     "file_path": file_path,
     "chart_type": "histogram",
-    "message": message,
     "column_used": matched_column,
-    "total_values": len(data),
+
+    "total_rows": len(df),
+    "valid_values": len(data),
+    "missing_values": int(df[matched_column].isna().sum()),
+
+    "statistics": stats,
+
     "rows_excluded_missing": dropped_rows,
+
+    "message": message,
     }
 
 
@@ -308,9 +394,32 @@ def histogram(column: str) -> dict:
 def line_plot(y_column: str, x_column: str | None = None) -> dict:
     """
     Generate a line plot.
-    Use a univariate line plot when only y_column is provided (uses row index as X-axis).
-    Use a bivariate line plot when both x_column and y_column are provided.
+
+    Use a univariate line plot when only y_column is provided
+    (uses row index as X-axis).
+
+    Use a bivariate line plot when both x_column and y_column
+    are provided.
+
     Excludes rows with missing values in the columns being plotted.
+
+    IMPORTANT:
+    If the user requests a line plot/chart, ALWAYS call this tool
+    instead of replying with text only.
+    Dont say anything like saved or view using the file path.
+
+    The following requests all mean the user wants this tool called:
+    - give me the line plot
+    - show me the line plot
+    - make the line plot
+    - create a line plot
+    - generate a line plot
+    - give me a line chart
+    - show me a line chart
+    - make a line chart
+    - create a line chart
+    - generate a line chart
+    - plot the data as a line
     """
     df = get_current_dataframe()
     if df is None or df.empty:
@@ -353,25 +462,68 @@ def line_plot(y_column: str, x_column: str | None = None) -> dict:
     if dropped_rows:
         message += f" Excluded {dropped_rows} row(s) with missing values in the plotted columns."
 
+    stats = {
+        "y_count": int(plot_df[matched_y].count()),
+        "y_min": float(plot_df[matched_y].min()),
+        "y_max": float(plot_df[matched_y].max()),
+        "y_mean": float(plot_df[matched_y].mean()),
+        "y_median": float(plot_df[matched_y].median()),
+        "y_std": float(plot_df[matched_y].std()) if len(plot_df) > 1 else 0.0,
+    }
+
+    if matched_x:
+        stats.update({
+            "x_count": int(plot_df[matched_x].count()),
+            "x_min": float(plot_df[matched_x].min()),
+            "x_max": float(plot_df[matched_x].max()),
+            "x_mean": float(plot_df[matched_x].mean()),
+            "x_median": float(plot_df[matched_x].median()),
+        })
+
     return {
-    "status": "success",
-    "chart_id": chart_id,
-    "file_path": file_path,
-    "chart_type": "line_plot",
-    "message": message,
-    "x_column_used": (
-        matched_x
-        if matched_x
-        else "Index"
-    ),
-    "y_column_used": matched_y,
-    "rows_used": len(plot_df),
-    "rows_excluded_missing": dropped_rows,
+        "status": "success",
+        "chart_id": chart_id,
+        "file_path": file_path,
+        "chart_type": "line_plot",
+        "message": message,
+        "x_column_used": (
+            matched_x
+            if matched_x
+            else "Index"
+        ),
+        "y_column_used": matched_y,
+        "rows_used": len(plot_df),
+        "rows_excluded_missing": dropped_rows,
+        "statistics": stats,
     }
 
 @tool
 def bar_chart(category_column: str, value_column: str) -> dict:
-    """Generates a bar chart comparing aggregated values across categories. Excludes rows with missing values in either column."""
+    """
+    Generate a bar chart comparing aggregated values across categories.
+
+    Excludes rows with missing values in either column.
+
+    IMPORTANT:
+
+    Dont say anything like saved or view using the file path. 
+    If the user requests a bar chart/plot, ALWAYS call this tool
+    instead of replying with text only.
+
+    The following requests all mean the user wants this tool called:
+    - give me the bar chart
+    - show me the bar chart
+    - make the bar chart
+    - create a bar chart
+    - generate a bar chart
+    - give me the bar plot
+    - show me the bar plot
+    - make a bar plot
+    - create a bar plot
+    - generate a bar plot
+    - visualize these categories
+    - plot these categories as bars
+    """
 
     df = get_current_dataframe()
 
@@ -457,18 +609,32 @@ def bar_chart(category_column: str, value_column: str) -> dict:
     chart_id, file_path = save_chart()
 
     message = f"Successfully generated bar chart of average {matched_val} by {matched_cat}."
+
     if dropped_rows:
         message += f" Excluded {dropped_rows} row(s) with missing values in these columns."
 
+
+    stats = {
+        "categories": int(summary[matched_cat].nunique()),
+        "rows_used": int(len(plot_df)),
+        "rows_excluded_missing": int(dropped_rows),
+
+        "minimum_average": float(summary[f"Average_{matched_val}"].min()),
+        "maximum_average": float(summary[f"Average_{matched_val}"].max()),
+        "overall_average": float(plot_df[matched_val].mean()),
+    }
+
+
     return {
-    "status": "success",
-    "chart_id": chart_id,
-    "file_path": file_path,
-    "chart_type": "bar_chart",
-    "message": message,
-    "category_column_used": matched_cat,
-    "value_column_used": matched_val,
-    "rows_excluded_missing": dropped_rows,
+        "status": "success",
+        "chart_id": chart_id,
+        "file_path": file_path,
+        "chart_type": "bar_chart",
+        "message": message,
+        "category_column_used": matched_cat,
+        "value_column_used": matched_val,
+        "rows_excluded_missing": dropped_rows,
+        "statistics": stats,
     }
 
 @tool

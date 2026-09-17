@@ -55,10 +55,7 @@ def get_posts(post_id:int):
 
 #! UPDATE
 
-@app.put(
-    "/posts/{post_id}",
-    response_model=PostResponse
-)
+@app.put("/posts/{post_id}",response_model=PostResponse)
 def update_post(post_id: int, post: PostUpdate):
 
     posts[post_id] = {
